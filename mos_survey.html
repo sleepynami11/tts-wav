@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TTS Listening Study</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F7F6F3; --surface: #FFFFFF; --border: #E2E0DB;
+    --text-primary: #1A1916; --text-secondary: #6B6860;
+    --accent: #2D5BE3; --accent-light: #EEF2FD;
+    --mono: 'IBM Plex Mono', monospace; --sans: 'Inter', sans-serif;
+  }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text-primary); min-height: 100vh; }
+  .header { background: var(--text-primary); color: white; padding: 24px 40px; display: flex; align-items: center; gap: 16px; }
+  .header-badge { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; background: rgba(255,255,255,0.12); padding: 4px 10px; border-radius: 4px; color: rgba(255,255,255,0.7); }
+  .header h1 { font-size: 18px; font-weight: 500; }
+  .progress-bar-wrap { background: var(--border); height: 3px; }
+  .progress-bar-fill { height: 3px; background: var(--accent); transition: width 0.4s ease; width: 0%; }
+  .main { max-width: 700px; margin: 0 auto; padding: 48px 24px 80px; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .intro-eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 14px; }
+  .intro-title { font-size: 30px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 20px; }
+  .intro-title em { font-style: normal; color: var(--accent); }
+  .intro-body { font-size: 14px; line-height: 1.7; color: var(--text-secondary); margin-bottom: 28px; }
+  .info-row { display: flex; gap: 12px; margin-bottom: 36px; flex-wrap: wrap; }
+  .info-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; }
+  .info-card-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 4px; }
+  .info-card-value { font-size: 14px; font-weight: 500; }
+
+  .btn-primary { display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: white; border: none; padding: 13px 26px; font-size: 15px; font-weight: 500; font-family: var(--sans); border-radius: 8px; cursor: pointer; transition: background 0.15s; }
+  .btn-primary:hover { background: #2450CC; }
+  .btn-primary:disabled { background: #B0BAD4; cursor: not-allowed; }
+  .btn-secondary { display: inline-flex; align-items: center; gap: 8px; background: transparent; color: var(--text-secondary); border: 1px solid var(--border); padding: 11px 20px; font-size: 14px; font-family: var(--sans); border-radius: 8px; cursor: pointer; }
+  .btn-secondary:hover { border-color: #AAA; color: var(--text-primary); }
+
+  /* Profile form */
+  .field { margin-bottom: 20px; }
+  .field label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 7px; }
+  .field input[type=text], .field input[type=number] {
+    width: 100%; padding: 11px 14px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 15px; font-family: var(--sans); background: var(--surface); color: var(--text-primary);
+    transition: border-color 0.15s;
+  }
+  .field input:focus { outline: none; border-color: var(--accent); }
+  .gender-options { display: flex; gap: 10px; flex-wrap: wrap; }
+  .gender-btn { padding: 9px 18px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); cursor: pointer; font-size: 14px; font-family: var(--sans); transition: all 0.15s; }
+  .gender-btn:hover { border-color: var(--accent); background: var(--accent-light); }
+  .gender-btn.selected { border-color: var(--accent); background: var(--accent); color: white; }
+
+  /* Consent */
+  .consent-list { list-style: none; margin: 18px 0 28px; }
+  .consent-list li { display: flex; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 14px; line-height: 1.5; color: var(--text-secondary); }
+  .consent-list li:last-child { border-bottom: none; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-top: 7px; flex-shrink: 0; }
+
+  /* Question */
+  .question-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .question-counter { font-family: var(--mono); font-size: 12px; color: var(--text-secondary); }
+  .question-counter span { color: var(--text-primary); font-weight: 500; }
+  .category-tag { font-family: var(--mono); font-size: 11px; padding: 3px 10px; border-radius: 4px; background: var(--accent-light); color: var(--accent); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; margin-bottom: 18px; }
+  .sentence-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 10px; }
+  .sentence-text { font-size: 15px; line-height: 1.7; border-left: 3px solid var(--accent); padding-left: 16px; margin-bottom: 24px; font-style: italic; }
+
+  .audio-label { font-size: 11px; font-weight: 500; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .audio-player-custom { display: flex; align-items: center; gap: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; margin-bottom: 6px; }
+  .play-btn { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .play-btn:hover { background: #2450CC; }
+  .play-btn svg { fill: white; }
+  .audio-info { flex: 1; }
+  .audio-id { font-family: var(--mono); font-size: 11px; color: var(--text-secondary); }
+  .audio-status { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+  .audio-status.playing { color: var(--accent); }
+  .play-count { font-family: var(--mono); font-size: 11px; color: var(--text-secondary); background: var(--border); padding: 2px 8px; border-radius: 10px; }
+
+  .rating-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; margin-top: 20px; }
+  .rating-subtitle { font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; }
+  .mos-scale { display: flex; gap: 8px; }
+  .mos-btn { flex: 1; padding: 11px 4px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); cursor: pointer; text-align: center; transition: all 0.15s; font-family: var(--sans); }
+  .mos-btn:hover { border-color: var(--accent); background: var(--accent-light); }
+  .mos-btn.selected { border-color: var(--accent); background: var(--accent); color: white; }
+  .mos-btn .score { display: block; font-size: 18px; font-weight: 600; margin-bottom: 2px; }
+  .mos-btn .label { display: block; font-size: 10px; opacity: 0.7; }
+  .mos-btn.selected .label { opacity: 0.85; }
+  .nav-row { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; }
+
+  /* Submitting screen */
+  .submit-screen { text-align: center; padding: 60px 0; }
+  .submit-screen h2 { font-size: 24px; font-weight: 600; margin-bottom: 12px; }
+  .submit-screen p { color: var(--text-secondary); font-size: 14px; line-height: 1.7; }
+  .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 24px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 500px) {
+    .header { padding: 18px 16px; }
+    .main { padding: 24px 16px 60px; }
+    .card { padding: 18px; }
+    .mos-btn .label { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="header-badge">LISTENING STUDY</span>
+  <h1>Speech Naturalness Evaluation</h1>
+</div>
+<div class="progress-bar-wrap">
+  <div class="progress-bar-fill" id="progressBar"></div>
+</div>
+
+<div class="main">
+
+  <!-- INTRO -->
+  <div class="screen active" id="screen-intro">
+    <div class="intro-eyebrow">University Research Study</div>
+    <h1 class="intro-title">How natural does<br><em>synthesised speech</em> sound?</h1>
+    <p class="intro-body">Listen to short audio clips and rate how natural each one sounds. Use headphones if possible.</p>
+    <div class="info-row">
+      <div class="info-card"><div class="info-card-label">Clips</div><div class="info-card-value">9 audio clips</div></div>
+      <div class="info-card"><div class="info-card-label">Time</div><div class="info-card-value">~10 minutes</div></div>
+      <div class="info-card"><div class="info-card-label">Equipment</div><div class="info-card-value">Headphones recommended</div></div>
+    </div>
+    <button class="btn-primary" onclick="showScreen('screen-profile')">Get started →</button>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="screen" id="screen-profile">
+    <div class="intro-eyebrow">Step 1 of 2</div>
+    <h2 style="font-size:22px;font-weight:600;letter-spacing:-0.02em;margin-bottom:24px;">Tell us about yourself</h2>
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="inputName" placeholder="Your name">
+    </div>
+    <div class="field">
+      <label>Age</label>
+      <input type="number" id="inputAge" placeholder="e.g. 23" min="10" max="99">
+    </div>
+    <div class="field">
+      <label>Gender</label>
+      <div class="gender-options">
+        <button class="gender-btn" onclick="selectGender(this, 'Male')">Male</button>
+        <button class="gender-btn" onclick="selectGender(this, 'Female')">Female</button>
+        <button class="gender-btn" onclick="selectGender(this, 'Non-binary')">Non-binary</button>
+        <button class="gender-btn" onclick="selectGender(this, 'Prefer not to say')">Prefer not to say</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;margin-top:32px;">
+      <button class="btn-secondary" onclick="showScreen('screen-intro')">← Back</button>
+      <button class="btn-primary" id="profileNextBtn" onclick="goToConsent()">Next →</button>
+    </div>
+  </div>
+
+  <!-- CONSENT -->
+  <div class="screen" id="screen-consent">
+    <div class="intro-eyebrow">Step 2 of 2</div>
+    <h2 style="font-size:22px;font-weight:600;letter-spacing:-0.02em;margin-bottom:18px;">Before you listen</h2>
+    <ul class="consent-list">
+      <li><span class="dot"></span><span>Your responses are anonymous and used only for this research study.</span></li>
+      <li><span class="dot"></span><span>You may stop at any time without consequence.</span></li>
+      <li><span class="dot"></span><span>You can replay each clip as many times as you like before rating.</span></li>
+      <li><span class="dot"></span><span>Rate based on <strong>naturalness</strong> — how much the speech sounds like a real human speaker.</span></li>
+      <li><span class="dot"></span><span>There are no right or wrong answers. Trust your first impression.</span></li>
+    </ul>
+    <div style="display:flex;gap:12px;">
+      <button class="btn-secondary" onclick="showScreen('screen-profile')">← Back</button>
+      <button class="btn-primary" onclick="startSurvey()">I agree, start listening →</button>
+    </div>
+  </div>
+
+  <!-- QUESTION -->
+  <div class="screen" id="screen-question">
+    <div class="question-meta">
+      <div class="question-counter">Question <span id="qNum">1</span> of <span id="qTotal">9</span></div>
+      <div class="category-tag" id="qCategory">—</div>
+    </div>
+    <div class="card">
+      <div class="sentence-label">Sentence</div>
+      <div class="sentence-text" id="qSentence">…</div>
+      <div class="audio-label">Audio clip</div>
+      <div class="audio-player-custom">
+        <button class="play-btn" id="playBtn" onclick="togglePlay()">
+          <svg id="playIcon" width="12" height="14" viewBox="0 0 12 14"><path d="M0 0 L12 7 L0 14 Z"/></svg>
+        </button>
+        <div class="audio-info">
+          <div class="audio-id" id="audioId">—</div>
+          <div class="audio-status" id="audioStatus">Ready to play</div>
+        </div>
+        <div class="play-count" id="playCount">0×</div>
+      </div>
+      <audio id="audioEl" onended="onAudioEnd()" ontimeupdate="onTimeUpdate()"></audio>
+      <div class="rating-title">Naturalness rating</div>
+      <div class="rating-subtitle">1 = very unnatural &nbsp;·&nbsp; 5 = completely natural</div>
+      <div class="mos-scale">
+        <button class="mos-btn" onclick="selectMOS(1)"><span class="score">1</span><span class="label">Bad</span></button>
+        <button class="mos-btn" onclick="selectMOS(2)"><span class="score">2</span><span class="label">Poor</span></button>
+        <button class="mos-btn" onclick="selectMOS(3)"><span class="score">3</span><span class="label">Fair</span></button>
+        <button class="mos-btn" onclick="selectMOS(4)"><span class="score">4</span><span class="label">Good</span></button>
+        <button class="mos-btn" onclick="selectMOS(5)"><span class="score">5</span><span class="label">Excellent</span></button>
+      </div>
+    </div>
+    <div class="nav-row">
+      <button class="btn-secondary" id="prevBtn" onclick="prevQuestion()">← Previous</button>
+      <button class="btn-primary" id="nextBtn" onclick="nextQuestion()" disabled>Next →</button>
+    </div>
+  </div>
+
+  <!-- SUBMITTING -->
+  <div class="screen" id="screen-submitting">
+    <div class="submit-screen">
+      <div class="spinner"></div>
+      <h2>Submitting your results…</h2>
+      <p>Please wait, you will be redirected automatically.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const BASE = "https://sleepynami11.github.io/tts-wav";
+const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLScVwRQ1LXr4_zAHZTlhwMnV7QGdh5GBEanb0F0EpVRTAKgvnw/viewform";
+const ENTRY_NAME   = "entry.9137511";
+const ENTRY_AGE    = "entry.467598149";
+const ENTRY_GENDER = "entry.1572092136";
+const ENTRY_JSON   = "entry.583685742";
+
+const CAT_LABELS = { "1": "Long Subject NP", "2": "Complex Embedding", "3": "List & Coordination" };
+
+const SENTENCES = {
+  "1": {
+    a: "The very tall and athletic boy with the bright blue backpack who usually sits quietly near the large window in the far back of the sunny classroom is actually my best friend from childhood.",
+    b: "A small group of international students who are waiting patiently for the last bus outside the old post office in the pouring rain looks extremely tired after their long trip.",
+    c: "The friendly old man who sells fresh colorful flowers every morning at the busy corner of the street near the city park lives alone in a tiny wooden house.",
+    d: "My younger sister who works as a dedicated teacher in a large primary school in the center of the city bought a beautiful new car with her savings last week.",
+    e: "The heavy box of old dusty books that was sitting forgotten in the corner of the dark basement for many years was finally opened by the curious children today."
+  },
+  "2": {
+    a: "The delicious chocolate cake that my kind mother baked for the birthday party that we had last Saturday in the garden that belongs to my grandmother was the best thing I ever tasted.",
+    b: "The small black cat that was hiding under the table while the large dogs were playing loudly in the garden suddenly ran away when it heard a very strange noise.",
+    c: "The long letter that the friendly postman delivered to the house with the red door early this morning was for my older brother who is currently studying in London.",
+    d: "The exciting movie that we watched in the new theater that opened last month in the shopping mall was a bit too long but the ending was very surprising.",
+    e: "The fresh water in the glass bottle that I left on the table in the kitchen yesterday is not cold anymore because the window was open all night long."
+  },
+  "3": {
+    a: "For our big family breakfast we had two fried eggs a piece of buttered toast some fresh green fruit a bowl of warm oatmeal a glass of cold orange juice and a cup of black coffee.",
+    b: "In my heavy school bag I found a sharp red pen a small yellow notebook a pair of glasses a blue umbrella a warm sweater and some old metal keys.",
+    c: "They need to buy cold milk fresh bread ten eggs some salted butter a bag of sugar and a few green apples at the supermarket before it closes tonight.",
+    d: "The happy children were playing on the grass with a yellow ball a small toy car a blue kite a big plastic doll and a colorful box of wooden blocks.",
+    e: "We saw a long movie went to a fancy restaurant visited a history museum took a walk in the park and finally met our friends at the station."
+  }
+};
+
+const SETS = {
+  1: [
+    { cat:"1", sent:"a", src:"H" }, { cat:"2", sent:"b", src:"Wp" }, { cat:"3", sent:"c", src:"Wu" },
+    { cat:"2", sent:"a", src:"H" }, { cat:"3", sent:"b", src:"Wp" }, { cat:"1", sent:"c", src:"Wu" },
+    { cat:"3", sent:"a", src:"H" }, { cat:"1", sent:"b", src:"Wp" }, { cat:"2", sent:"c", src:"Wu" },
+  ],
+  2: [
+    { cat:"1", sent:"b", src:"H" }, { cat:"2", sent:"c", src:"Wp" }, { cat:"3", sent:"d", src:"Wu" },
+    { cat:"2", sent:"b", src:"H" }, { cat:"3", sent:"c", src:"Wp" }, { cat:"1", sent:"d", src:"Wu" },
+    { cat:"3", sent:"b", src:"H" }, { cat:"1", sent:"c", src:"Wp" }, { cat:"2", sent:"d", src:"Wu" },
+  ],
+  3: [
+    { cat:"1", sent:"c", src:"H" }, { cat:"2", sent:"d", src:"Sp" }, { cat:"3", sent:"e", src:"Su" },
+    { cat:"2", sent:"c", src:"H" }, { cat:"3", sent:"d", src:"Sp" }, { cat:"1", sent:"e", src:"Su" },
+    { cat:"3", sent:"c", src:"H" }, { cat:"1", sent:"d", src:"Sp" }, { cat:"2", sent:"e", src:"Su" },
+  ],
+  4: [
+    { cat:"1", sent:"d", src:"H" }, { cat:"2", sent:"e", src:"Sp" }, { cat:"3", sent:"a", src:"Su" },
+    { cat:"2", sent:"d", src:"H" }, { cat:"3", sent:"e", src:"Sp" }, { cat:"1", sent:"a", src:"Su" },
+    { cat:"3", sent:"d", src:"H" }, { cat:"1", sent:"e", src:"Sp" }, { cat:"2", sent:"a", src:"Su" },
+  ]
+};
+
+function getAudioUrl(cat, sent, src) {
+  if (src === "H")  return `${BASE}/native/${cat}_${sent}.wav`;
+  if (src === "Wp") return `${BASE}/whisperspeech_experiments/punctuated/cat${cat}_${sent}.wav`;
+  if (src === "Wu") return `${BASE}/whisperspeech_experiments/unpunctuated/cat${cat}_${sent}.wav`;
+  if (src === "Sp") return `${BASE}/speecht5_experiments/punctuated/cat${cat}_${sent}.wav`;
+  if (src === "Su") return `${BASE}/speecht5_experiments/unpunctuated/cat${cat}_${sent}.wav`;
+}
+
+// State
+let questions = [], currentQ = 0, playCounts = [], setNum = 1;
+let participantName = "", participantAge = "", participantGender = "";
+
+// ── UI helpers ──
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function selectGender(btn, val) {
+  document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  participantGender = val;
+}
+
+function goToConsent() {
+  participantName = document.getElementById('inputName').value.trim();
+  participantAge  = document.getElementById('inputAge').value.trim();
+  if (!participantName || !participantAge || !participantGender) {
+    alert('Please fill in all fields before continuing.');
+    return;
+  }
+  showScreen('screen-consent');
+}
+
+// ── Survey ──
+function startSurvey() {
+  const params = new URLSearchParams(window.location.search);
+  setNum = parseInt(params.get('s')) || Math.ceil(Math.random() * 4);
+  if (setNum < 1 || setNum > 4) setNum = 1;
+
+  questions = SETS[setNum].map(q => ({
+    ...q,
+    sentence: SENTENCES[q.cat][q.sent],
+    audioUrl: getAudioUrl(q.cat, q.sent, q.src),
+    displayId: `${q.src}-${q.cat}${q.sent}`,
+    mos: null
+  }));
+  playCounts = new Array(questions.length).fill(0);
+  currentQ = 0;
+  showScreen('screen-question');
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = questions[currentQ];
+  document.getElementById('qNum').textContent = currentQ + 1;
+  document.getElementById('qTotal').textContent = questions.length;
+  document.getElementById('qCategory').textContent = CAT_LABELS[q.cat];
+  document.getElementById('qSentence').textContent = q.sentence;
+  document.getElementById('audioId').textContent = q.displayId;
+  document.getElementById('audioStatus').textContent = 'Ready to play';
+  document.getElementById('audioStatus').className = 'audio-status';
+  document.getElementById('playCount').textContent = playCounts[currentQ] + '×';
+
+  const audio = document.getElementById('audioEl');
+  audio.src = q.audioUrl;
+  audio.load();
+  setPlayIcon(false);
+
+  document.querySelectorAll('.mos-btn').forEach((btn, i) => btn.classList.toggle('selected', q.mos === i + 1));
+  document.getElementById('prevBtn').style.visibility = currentQ === 0 ? 'hidden' : 'visible';
+  const nextBtn = document.getElementById('nextBtn');
+  nextBtn.disabled = q.mos === null;
+  nextBtn.textContent = currentQ === questions.length - 1 ? 'Submit →' : 'Next →';
+  document.getElementById('progressBar').style.width = (currentQ / questions.length * 100) + '%';
+}
+
+function nextQuestion() {
+  stopAudio();
+  if (currentQ < questions.length - 1) { currentQ++; renderQuestion(); }
+  else submitResults();
+  window.scrollTo(0, 0);
+}
+
+function prevQuestion() {
+  stopAudio();
+  if (currentQ > 0) { currentQ--; renderQuestion(); }
+  window.scrollTo(0, 0);
+}
+
+// ── Audio ──
+function togglePlay() {
+  const audio = document.getElementById('audioEl');
+  if (audio.paused) {
+    audio.play().catch(() => { document.getElementById('audioStatus').textContent = '⚠ Could not load audio'; });
+    playCounts[currentQ]++;
+    document.getElementById('playCount').textContent = playCounts[currentQ] + '×';
+    document.getElementById('audioStatus').textContent = 'Playing…';
+    document.getElementById('audioStatus').className = 'audio-status playing';
+    setPlayIcon(true);
+  } else {
+    audio.pause();
+    document.getElementById('audioStatus').textContent = 'Paused';
+    document.getElementById('audioStatus').className = 'audio-status';
+    setPlayIcon(false);
+  }
+}
+function stopAudio() {
+  const a = document.getElementById('audioEl');
+  a.pause(); a.currentTime = 0; setPlayIcon(false);
+}
+function onAudioEnd() {
+  document.getElementById('audioStatus').textContent = 'Finished';
+  document.getElementById('audioStatus').className = 'audio-status';
+  setPlayIcon(false);
+}
+function onTimeUpdate() {
+  const a = document.getElementById('audioEl');
+  if (!a.paused && a.duration)
+    document.getElementById('audioStatus').textContent = `Playing… ${Math.round(a.currentTime/a.duration*100)}%`;
+}
+function setPlayIcon(playing) {
+  document.getElementById('playIcon').innerHTML = playing
+    ? '<rect x="0" y="0" width="4" height="14"/><rect x="8" y="0" width="4" height="14"/>'
+    : '<path d="M0 0 L12 7 L0 14 Z"/>';
+}
+
+function selectMOS(score) {
+  questions[currentQ].mos = score;
+  document.querySelectorAll('.mos-btn').forEach((btn, i) => btn.classList.toggle('selected', i + 1 === score));
+  document.getElementById('nextBtn').disabled = false;
+}
+
+// ── Submit ──
+function submitResults() {
+  document.getElementById('progressBar').style.width = '100%';
+  showScreen('screen-submitting');
+
+  const jsonData = JSON.stringify({
+    set: setNum,
+    submitted_at: new Date().toISOString(),
+    ratings: questions.map((q, i) => ({
+      id: q.displayId, cat: q.cat, sent: q.sent, src: q.src,
+      mos: q.mos, plays: playCounts[i]
+    }))
+  });
+
+  const params = new URLSearchParams();
+  params.set(ENTRY_NAME,   participantName);
+  params.set(ENTRY_AGE,    participantAge);
+  params.set(ENTRY_GENDER, participantGender);
+  params.set(ENTRY_JSON,   jsonData);
+
+  // Small delay so the spinner shows, then redirect to pre-filled Google Form
+  setTimeout(() => {
+    window.location.href = `${FORM_URL}?usp=pp_url&${params.toString()}`;
+  }, 1200);
+}
+</script>
+</body>
+</html>
