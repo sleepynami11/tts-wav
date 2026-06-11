@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TTS Listening Study</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #F7F6F3;
+    --surface: #FFFFFF;
+    --border: #E2E0DB;
+    --text-primary: #1A1916;
+    --text-secondary: #6B6860;
+    --accent: #2D5BE3;
+    --accent-light: #EEF2FD;
+    --success: #1A7A4A;
+    --success-light: #E8F5EE;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Inter', sans-serif;
+  }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: var(--text-primary);
+    color: white;
+    padding: 28px 40px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .header-badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    background: rgba(255,255,255,0.12);
+    padding: 4px 10px;
+    border-radius: 4px;
+    color: rgba(255,255,255,0.7);
+  }
+  .header h1 {
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  /* ── Progress bar ── */
+  .progress-bar-wrap {
+    background: var(--border);
+    height: 3px;
+  }
+  .progress-bar-fill {
+    height: 3px;
+    background: var(--accent);
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+
+  /* ── Main layout ── */
+  .main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* ── Screen system ── */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ── Intro screen ── */
+  .intro-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .intro-title {
+    font-size: 32px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    margin-bottom: 24px;
+  }
+  .intro-title em {
+    font-style: normal;
+    color: var(--accent);
+  }
+  .intro-body {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+  }
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+  .info-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+  }
+  .info-card-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .info-card-value {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  /* ── Buttons ── */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 14px 28px;
+    font-size: 15px;
+    font-weight: 500;
+    font-family: var(--sans);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .btn-primary:hover { background: #2450CC; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { background: #B0BAD4; cursor: not-allowed; }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    padding: 12px 22px;
+    font-size: 14px;
+    font-weight: 400;
+    font-family: var(--sans);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-secondary:hover { border-color: #AAA; color: var(--text-primary); }
+
+  /* ── Question card ── */
+  .question-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+  }
+  .question-counter {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .question-counter span {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+  .category-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    margin-bottom: 20px;
+  }
+
+  .sentence-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .sentence-text {
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--text-primary);
+    border-left: 3px solid var(--accent);
+    padding-left: 16px;
+    margin-bottom: 28px;
+    font-style: italic;
+  }
+
+  /* ── Audio player ── */
+  .audio-section {
+    margin-bottom: 28px;
+  }
+  .audio-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .audio-player-custom {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .play-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .play-btn:hover { background: #2450CC; }
+  .play-btn svg { fill: white; }
+  .audio-info {
+    flex: 1;
+  }
+  .audio-filename {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+  .audio-status {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+  .audio-status.playing { color: var(--accent); }
+  .play-count {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+    background: var(--border);
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+
+  /* ── MOS rating ── */
+  .rating-section { margin-bottom: 20px; }
+  .rating-title {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 6px;
+  }
+  .rating-subtitle {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 14px;
+  }
+  .mos-scale {
+    display: flex;
+    gap: 8px;
+  }
+  .mos-btn {
+    flex: 1;
+    padding: 12px 4px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    font-family: var(--sans);
+  }
+  .mos-btn:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+  .mos-btn.selected {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: white;
+  }
+  .mos-btn .score {
+    display: block;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 3px;
+  }
+  .mos-btn .label {
+    display: block;
+    font-size: 10px;
+    line-height: 1.3;
+    color: inherit;
+    opacity: 0.7;
+  }
+  .mos-btn.selected .label { opacity: 0.85; }
+
+  .mos-scale-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+
+  /* ── Navigation ── */
+  .nav-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 28px;
+  }
+
+  /* ── Results ── */
+  .results-header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .results-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+  .results-title {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+  .results-sub {
+    color: var(--text-secondary);
+    font-size: 15px;
+  }
+  .results-data {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 24px;
+  }
+  .results-data h3 {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 16px;
+  }
+  pre.results-json {
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: var(--text-secondary);
+    max-height: 280px;
+    overflow-y: auto;
+  }
+  .copy-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--success-light);
+    color: var(--success);
+    border: 1px solid #B8E0CB;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: var(--sans);
+    border-radius: 8px;
+    cursor: pointer;
+    width: 100%;
+    justify-content: center;
+    margin-bottom: 10px;
+    transition: background 0.15s;
+  }
+  .copy-btn:hover { background: #D5EDDF; }
+
+  /* ── Consent screen ── */
+  .consent-list {
+    list-style: none;
+    margin: 20px 0 32px;
+  }
+  .consent-list li {
+    display: flex;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+  }
+  .consent-list li:last-child { border-bottom: none; }
+  .consent-list .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-top: 7px;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 500px) {
+    .header { padding: 20px 16px; }
+    .main { padding: 28px 16px 60px; }
+    .card { padding: 20px; }
+    .info-grid { grid-template-columns: 1fr; }
+    .mos-btn .label { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="header-badge">LISTENING STUDY</span>
+  <h1>TTS Prosody Evaluation</h1>
+</div>
+<div class="progress-bar-wrap">
+  <div class="progress-bar-fill" id="progressBar"></div>
+</div>
+
+<div class="main">
+
+  <!-- ══ SCREEN 0: Intro ══ -->
+  <div class="screen active" id="screen-intro">
+    <div class="intro-eyebrow">University Research Study</div>
+    <h1 class="intro-title">How natural does<br><em>synthesised speech</em> sound?</h1>
+    <p class="intro-body">
+      You will listen to sentences spoken by two AI text-to-speech systems and rate how natural they sound.
+      Your ratings help us understand how well TTS systems handle complex English sentences.
+    </p>
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="info-card-label">Time required</div>
+        <div class="info-card-value">~15 minutes</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-label">Audio clips</div>
+        <div class="info-card-value">30 sentences</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-label">Language</div>
+        <div class="info-card-value">English</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-label">Equipment</div>
+        <div class="info-card-value">Headphones recommended</div>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="showScreen('screen-consent')">
+      Get started →
+    </button>
+  </div>
+
+  <!-- ══ SCREEN 1: Consent ══ -->
+  <div class="screen" id="screen-consent">
+    <div class="intro-eyebrow">Before you begin</div>
+    <h2 style="font-size:24px;font-weight:600;letter-spacing:-0.02em;margin-bottom:20px;">Participant information</h2>
+    <ul class="consent-list">
+      <li><span class="dot"></span><span>Your responses are anonymous. No personal data is collected.</span></li>
+      <li><span class="dot"></span><span>You may stop at any time without consequence.</span></li>
+      <li><span class="dot"></span><span>Listen to each clip carefully before rating. You can replay each clip as many times as you like.</span></li>
+      <li><span class="dot"></span><span>Rate based on <strong>naturalness</strong> — how much the speech sounds like a real human speaker.</span></li>
+      <li><span class="dot"></span><span>There are no right or wrong answers. Trust your first impression.</span></li>
+    </ul>
+    <div style="display:flex;gap:12px;">
+      <button class="btn-secondary" onclick="showScreen('screen-intro')">← Back</button>
+      <button class="btn-primary" onclick="startSurvey()">I agree, start listening →</button>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN 2: Questions ══ -->
+  <div class="screen" id="screen-question">
+    <div class="question-meta">
+      <div class="question-counter">Question <span id="qNum">1</span> of <span id="qTotal">30</span></div>
+      <div class="category-tag" id="qCategory">cat1</div>
+    </div>
+
+    <div class="card">
+      <div class="sentence-label">Sentence</div>
+      <div class="sentence-text" id="qSentence">…</div>
+
+      <div class="audio-section">
+        <div class="audio-label">Audio clip</div>
+        <div class="audio-player-custom">
+          <button class="play-btn" id="playBtn" onclick="togglePlay()">
+            <svg id="playIcon" width="14" height="16" viewBox="0 0 14 16"><path d="M0 0 L14 8 L0 16 Z"/></svg>
+          </button>
+          <div class="audio-info">
+            <div class="audio-filename" id="audioFilename">—</div>
+            <div class="audio-status" id="audioStatus">Ready to play</div>
+          </div>
+          <div class="play-count" id="playCount">0×</div>
+        </div>
+        <audio id="audioEl" onended="onAudioEnd()" ontimeupdate="onTimeUpdate()"></audio>
+      </div>
+
+      <div class="rating-section">
+        <div class="rating-title">Naturalness rating</div>
+        <div class="rating-subtitle">How natural does this speech sound? (1 = very unnatural, 5 = completely natural)</div>
+        <div class="mos-scale" id="mosScale">
+          <button class="mos-btn" onclick="selectMOS(1)"><span class="score">1</span><span class="label">Bad</span></button>
+          <button class="mos-btn" onclick="selectMOS(2)"><span class="score">2</span><span class="label">Poor</span></button>
+          <button class="mos-btn" onclick="selectMOS(3)"><span class="score">3</span><span class="label">Fair</span></button>
+          <button class="mos-btn" onclick="selectMOS(4)"><span class="score">4</span><span class="label">Good</span></button>
+          <button class="mos-btn" onclick="selectMOS(5)"><span class="score">5</span><span class="label">Excellent</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-row">
+      <button class="btn-secondary" id="prevBtn" onclick="prevQuestion()">← Previous</button>
+      <button class="btn-primary" id="nextBtn" onclick="nextQuestion()" disabled>Next →</button>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN 3: Results ══ -->
+  <div class="screen" id="screen-results">
+    <div class="results-header">
+      <div class="results-icon">✓</div>
+      <h2 class="results-title">All done — thank you!</h2>
+      <p class="results-sub">Your ratings have been recorded below.<br>Please copy and send them to the researcher.</p>
+    </div>
+    <div class="results-data">
+      <h3>Your results (copy this entire block)</h3>
+      <pre class="results-json" id="resultsJson"></pre>
+    </div>
+    <button class="copy-btn" onclick="copyResults()">📋 Copy results to clipboard</button>
+    <p style="text-align:center;font-size:12px;color:var(--text-secondary);margin-top:8px;">
+      Paste and send to: <strong>your researcher's email</strong>
+    </p>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+// ──────────────────────────────────────────────
+// DATA
+// ──────────────────────────────────────────────
+const BASE = "https://raw.githubusercontent.com/sleepynami11/tts-wav/main";
+
+const SENTENCES = {
+  cat1: [
+    "The very tall and athletic boy with the bright blue backpack who usually sits quietly near the large window in the far back of the sunny classroom is actually my best friend from childhood.",
+    "A small group of international students who are waiting patiently for the last bus outside the old post office in the pouring rain looks extremely tired after their long trip.",
+    "The friendly old man who sells fresh colorful flowers every morning at the busy corner of the street near the city park lives alone in a tiny wooden house.",
+    "My younger sister who works as a dedicated teacher in a large primary school in the center of the city bought a beautiful new car with her savings last week.",
+    "The heavy box of old dusty books that was sitting forgotten in the corner of the dark basement for many years was finally opened by the curious children today."
+  ],
+  cat2: [
+    "The delicious chocolate cake that my kind mother baked for the birthday party that we had last Saturday in the garden that belongs to my grandmother was the best thing I ever tasted.",
+    "The small black cat that was hiding under the table while the large dogs were playing loudly in the garden suddenly ran away when it heard a very strange noise.",
+    "The long letter that the friendly postman delivered to the house with the red door early this morning was for my older brother who is currently studying in London.",
+    "The exciting movie that we watched in the new theater that opened last month in the shopping mall was a bit too long but the ending was very surprising.",
+    "The fresh water in the glass bottle that I left on the table in the kitchen yesterday is not cold anymore because the window was open all night long."
+  ],
+  cat3: [
+    "For our big family breakfast we had two fried eggs a piece of buttered toast some fresh green fruit a bowl of warm oatmeal a glass of cold orange juice and a cup of black coffee.",
+    "In my heavy school bag I found a sharp red pen a small yellow notebook a pair of glasses a blue umbrella a warm sweater and some old metal keys.",
+    "They need to buy cold milk fresh bread ten eggs some salted butter a bag of sugar and a few green apples at the supermarket before it closes tonight.",
+    "The happy children were playing on the grass with a yellow ball a small toy car a blue kite a big plastic doll and a colorful box of wooden blocks.",
+    "We saw a long movie went to a fancy restaurant visited a history museum took a walk in the park and finally met our friends at the station."
+  ]
+};
+
+const CAT_LABELS = {
+  cat1: "Long Subject NP",
+  cat2: "Complex Embedding",
+  cat3: "List & Coordination"
+};
+
+// Build question list — one model + condition per participant (counterbalanced)
+// We present: whisperspeech punctuated (15) + speecht5 unpunctuated (15)
+// This is one possible assignment; you can make multiple versions
+function buildQuestions() {
+  const qs = [];
+  const configs = [
+    { model: "whisperspeech_experiments", condition: "punctuated",   modelLabel: "WhisperSpeech" },
+    { model: "whisperspeech_experiments", condition: "unpunctuated", modelLabel: "WhisperSpeech" },
+    { model: "speecht5_experiments",      condition: "punctuated",   modelLabel: "SpeechT5" },
+    { model: "speecht5_experiments",      condition: "unpunctuated", modelLabel: "SpeechT5" },
+  ];
+
+  // Pick one config per participant based on URL param ?v=1/2/3/4, default random
+  const params = new URLSearchParams(window.location.search);
+  let v = parseInt(params.get('v')) - 1;
+  if (isNaN(v) || v < 0 || v > 3) v = Math.floor(Math.random() * 4);
+  const cfg = configs[v];
+
+  ["cat1","cat2","cat3"].forEach(cat => {
+    for (let i = 0; i < 5; i++) {
+      const letters = ["a","b","c","d","e"];
+      qs.push({
+        model: cfg.model,
+        modelLabel: cfg.modelLabel,
+        condition: cfg.condition,
+        cat: cat,
+        sentIdx: i,
+        sentLetter: letters[i],
+        sentence: SENTENCES[cat][i],
+        audioUrl: `${BASE}/${cfg.model}/${cfg.condition}/cat${cat.slice(3)}_${letters[i]}.wav`,
+        filename: `cat${cat.slice(3)}_${letters[i]}.wav`,
+        mos: null
+      });
+    }
+  });
+
+  // Shuffle
+  for (let i = qs.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [qs[i], qs[j]] = [qs[j], qs[i]];
+  }
+  return qs;
+}
+
+let questions = [];
+let currentQ = 0;
+let playCounts = [];
+
+// ──────────────────────────────────────────────
+// NAVIGATION
+// ──────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function startSurvey() {
+  questions = buildQuestions();
+  playCounts = new Array(questions.length).fill(0);
+  currentQ = 0;
+  showScreen('screen-question');
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = questions[currentQ];
+  const total = questions.length;
+
+  document.getElementById('qNum').textContent = currentQ + 1;
+  document.getElementById('qTotal').textContent = total;
+  document.getElementById('qCategory').textContent = CAT_LABELS[q.cat];
+  document.getElementById('qSentence').textContent = q.sentence;
+  document.getElementById('audioFilename').textContent = `${q.modelLabel} · ${q.condition} · ${q.filename}`;
+  document.getElementById('audioStatus').textContent = 'Ready to play';
+  document.getElementById('audioStatus').className = 'audio-status';
+  document.getElementById('playCount').textContent = playCounts[currentQ] + '×';
+
+  // Load audio
+  const audio = document.getElementById('audioEl');
+  audio.src = q.audioUrl;
+  audio.load();
+  setPlayIcon(false);
+
+  // Render MOS buttons
+  const btns = document.querySelectorAll('.mos-btn');
+  btns.forEach((btn, i) => {
+    btn.classList.toggle('selected', q.mos === i + 1);
+  });
+
+  // Nav buttons
+  document.getElementById('prevBtn').style.visibility = currentQ === 0 ? 'hidden' : 'visible';
+  document.getElementById('nextBtn').disabled = q.mos === null;
+  if (currentQ === total - 1) {
+    document.getElementById('nextBtn').textContent = 'Submit →';
+  } else {
+    document.getElementById('nextBtn').textContent = 'Next →';
+  }
+
+  // Progress
+  const pct = (currentQ / total) * 100;
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+function nextQuestion() {
+  stopAudio();
+  if (currentQ < questions.length - 1) {
+    currentQ++;
+    renderQuestion();
+  } else {
+    showResults();
+  }
+  window.scrollTo(0, 0);
+}
+
+function prevQuestion() {
+  stopAudio();
+  if (currentQ > 0) {
+    currentQ--;
+    renderQuestion();
+  }
+  window.scrollTo(0, 0);
+}
+
+// ──────────────────────────────────────────────
+// AUDIO
+// ──────────────────────────────────────────────
+function togglePlay() {
+  const audio = document.getElementById('audioEl');
+  if (audio.paused) {
+    audio.play().catch(() => {
+      document.getElementById('audioStatus').textContent = '⚠ Could not load audio';
+    });
+    playCounts[currentQ]++;
+    document.getElementById('playCount').textContent = playCounts[currentQ] + '×';
+    document.getElementById('audioStatus').textContent = 'Playing…';
+    document.getElementById('audioStatus').className = 'audio-status playing';
+    setPlayIcon(true);
+  } else {
+    audio.pause();
+    document.getElementById('audioStatus').textContent = 'Paused';
+    document.getElementById('audioStatus').className = 'audio-status';
+    setPlayIcon(false);
+  }
+}
+
+function stopAudio() {
+  const audio = document.getElementById('audioEl');
+  audio.pause();
+  audio.currentTime = 0;
+  setPlayIcon(false);
+}
+
+function onAudioEnd() {
+  document.getElementById('audioStatus').textContent = 'Finished';
+  document.getElementById('audioStatus').className = 'audio-status';
+  setPlayIcon(false);
+}
+
+function onTimeUpdate() {
+  const audio = document.getElementById('audioEl');
+  if (!audio.paused && audio.duration) {
+    const pct = Math.round((audio.currentTime / audio.duration) * 100);
+    document.getElementById('audioStatus').textContent = `Playing… ${pct}%`;
+  }
+}
+
+function setPlayIcon(playing) {
+  const icon = document.getElementById('playIcon');
+  if (playing) {
+    icon.innerHTML = '<rect x="0" y="0" width="5" height="16"/><rect x="9" y="0" width="5" height="16"/>';
+  } else {
+    icon.innerHTML = '<path d="M0 0 L14 8 L0 16 Z"/>';
+  }
+}
+
+// ──────────────────────────────────────────────
+// RATING
+// ──────────────────────────────────────────────
+function selectMOS(score) {
+  questions[currentQ].mos = score;
+  document.querySelectorAll('.mos-btn').forEach((btn, i) => {
+    btn.classList.toggle('selected', i + 1 === score);
+  });
+  document.getElementById('nextBtn').disabled = false;
+}
+
+// ──────────────────────────────────────────────
+// RESULTS
+// ──────────────────────────────────────────────
+function showResults() {
+  document.getElementById('progressBar').style.width = '100%';
+  const output = {
+    submitted_at: new Date().toISOString(),
+    model: questions[0].modelLabel,
+    condition: questions[0].condition,
+    ratings: questions.map(q => ({
+      cat: q.cat,
+      sentence: q.sentLetter,
+      file: q.filename,
+      mos: q.mos,
+      play_count: playCounts[questions.indexOf(q)]
+    }))
+  };
+  document.getElementById('resultsJson').textContent = JSON.stringify(output, null, 2);
+  showScreen('screen-results');
+}
+
+function copyResults() {
+  const text = document.getElementById('resultsJson').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.textContent = '📋 Copy results to clipboard'; }, 2000);
+  });
+}
+</script>
+</body>
+</html>
