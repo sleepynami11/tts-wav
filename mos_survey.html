@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOS Listening Test</title>
+<style>
+ :root{--fg:#1d2330;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--bg:#f7f8fa;}
+ *{box-sizing:border-box} body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--fg);background:var(--bg);margin:0}
+ .wrap{max-width:640px;margin:0 auto;padding:24px 18px 80px}
+ h1{font-size:20px;margin:0 0 4px} .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+ .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+ .progress{height:6px;background:var(--line);border-radius:99px;overflow:hidden;margin-bottom:16px}
+ .bar{height:100%;background:var(--accent);width:0%;transition:width .25s}
+ audio{width:100%;margin:10px 0 4px}
+ .q{font-size:15px;line-height:1.5;margin:18px 0 12px;font-weight:600}
+ .scale{display:flex;gap:6px;flex-wrap:wrap}
+ .scale label{flex:1 1 0;min-width:60px;border:1px solid var(--line);border-radius:10px;padding:14px 6px;text-align:center;font-size:13px;cursor:pointer;user-select:none;background:#fff}
+ .scale input{display:none} .scale label:has(input:checked){border-color:var(--accent);background:#eef3ff;color:var(--accent);font-weight:700}
+ button{font-size:15px;padding:12px 18px;border-radius:10px;border:0;cursor:pointer}
+ .primary{background:var(--accent);color:#fff} .primary:disabled{background:#a9c0f7;cursor:not-allowed}
+ .ghost{background:#fff;border:1px solid var(--line)}
+ .row{display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:10px}
+ input[type=text]{font-size:15px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;width:100%}
+ .note{color:var(--muted);font-size:12px;margin-top:10px;line-height:1.5} .hidden{display:none}
+ .err{color:#b91c1c;font-size:12px;margin-top:8px;word-break:break-all}
+</style></head><body><div class="wrap">
+ <h1>MOS Listening Test</h1>
+ <div class="sub">Blind evaluation of speech pauses · please use headphones in a quiet room</div>
+
+ <div id="intro" class="card">
+   <p style="font-size:14px;line-height:1.6;margin-top:0">You will hear 15 short spoken sentences
+   in random order (about 6 minutes total). Please use headphones in a quiet room and do not look
+   at any text while listening.</p>
+   <div style="background:#f3f6ff;border:1px solid #dbe4ff;border-radius:10px;padding:14px;font-size:13.5px;line-height:1.7;margin:6px 0 4px">
+     <b>How to rate — please read carefully:</b><br>
+     • <b>Completely ignore the audio quality.</b> Do not judge whether the voice sounds electronic,
+       robotic or synthetic, or whether individual words are pronounced oddly. Many clips are
+       computer-generated and will sound artificial — that is <i>not</i> what we are measuring.<br>
+     • Judge <b>only the speaker's pauses and rhythm</b>: based on where they pause and how the speech
+       is phrased, how clearly can you perceive the <b>syntactic boundaries</b> — for example where the
+       subject (the person/thing) ends and the verb (the action) begins?<br>
+     • <b>1 = Bad</b> (pausing/rhythm makes the structure confusing or misleading) &nbsp;→&nbsp;
+       <b>5 = Good</b> (pausing/rhythm makes the structure perfectly clear).
+   </div>
+   <label class="q" for="pid">Participant ID</label>
+   <input type="text" id="pid" placeholder="e.g. P01" autocomplete="off">
+   <label style="display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-size:13px;line-height:1.55;cursor:pointer">
+     <input type="checkbox" id="consent" style="margin-top:3px;width:18px;height:18px;flex:none">
+     <span><b>Informed consent &amp; confidentiality.</b> I have read the instructions and I
+     <b>consent</b> to take part in this listening test. I also agree to keep all test materials
+     and contents <b>confidential</b>, and not to share, copy or disclose them to anyone.</span>
+   </label>
+   <div class="note">Total clips: <b id="ntot"></b>. The Start button unlocks once you tick the box.</div>
+   <div class="row"><span></span><button class="primary" id="startBtn" disabled>Start test</button></div>
+ </div>
+
+ <div id="test" class="card hidden">
+   <div class="progress"><div class="bar" id="bar"></div></div>
+   <div class="sub" id="counter"></div>
+   <audio id="player" controls preload="auto"></audio>
+   <div class="q" id="ratingQ"></div>
+   <div class="scale" id="scale"></div>
+   <div class="row"><button class="ghost" id="replayBtn">↻ Replay</button>
+     <button class="primary" id="nextBtn" disabled>Next →</button></div>
+   <div class="note">Please listen to the whole clip before rating.</div>
+   <div class="err" id="err"></div>
+ </div>
+
+ <div id="done" class="card hidden">
+   <h1 style="margin-top:0">Thank you! 🎧</h1>
+   <p style="font-size:14px;line-height:1.6">Click below to download your results and send the file back.</p>
+   <div class="row"><span></span><button class="primary" id="dlBtn">Download my results (CSV)</button></div>
+   <div class="note" id="dlNote"></div>
+ </div>
+</div>
+<script>
+const CLIPS=[{"id": "clip_001", "url": "whisperspeech_experiments/unpunctuated/cat1_a.wav", "g": 2}, {"id": "clip_002", "url": "whisperspeech_experiments/punctuated/cat2_b.wav", "g": 1}, {"id": "clip_003", "url": "Native_reference/3_b.wav", "g": 0}, {"id": "clip_004", "url": "whisperspeech_experiments/punctuated/cat1_c.wav", "g": 1}, {"id": "clip_005", "url": "Native_reference/1_c.wav", "g": 0}, {"id": "clip_006", "url": "Native_reference/1_a.wav", "g": 0}, {"id": "clip_007", "url": "whisperspeech_experiments/unpunctuated/cat3_e.wav", "g": 2}, {"id": "clip_008", "url": "whisperspeech_experiments/punctuated/cat3_b.wav", "g": 1}, {"id": "clip_009", "url": "whisperspeech_experiments/unpunctuated/cat1_c.wav", "g": 2}, {"id": "clip_010", "url": "Native_reference/2_b.wav", "g": 0}, {"id": "clip_011", "url": "Native_reference/3_e.wav", "g": 0}, {"id": "clip_012", "url": "whisperspeech_experiments/punctuated/cat1_a.wav", "g": 1}, {"id": "clip_013", "url": "whisperspeech_experiments/unpunctuated/cat2_b.wav", "g": 2}, {"id": "clip_014", "url": "whisperspeech_experiments/unpunctuated/cat3_b.wav", "g": 2}, {"id": "clip_015", "url": "whisperspeech_experiments/punctuated/cat3_e.wav", "g": 1}], OPTS=["1 Bad", "2", "3", "4", "5 Good"], QTEXT="Listen to the pauses. How natural do they sound?";
+const TARGET_RMS=Math.pow(10,(-23.0)/20), PEAK=Math.pow(10,(-1.0)/20);
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function interleave(clips){
+  const b={}; clips.forEach(c=>{(b[c.g]=b[c.g]||[]).push(c);});
+  let keys=Object.keys(b); keys.forEach(k=>shuffle(b[k]));
+  const m=Math.max(...keys.map(k=>b[k].length)); const out=[];
+  for(let i=0;i<m;i++){ shuffle(keys); keys.forEach(k=>{ if(b[k][i]) out.push(b[k][i]); }); }
+  return out;
+}
+const order=interleave(CLIPS.map(c=>({...c})));
+document.getElementById('ntot').textContent=order.length;
+document.getElementById('ratingQ').textContent=QTEXT;
+
+let idx=0,pid='',results=[],consentVal='no';
+let audioCtx=null,srcNode=null,gainNode=null;
+const player=document.getElementById('player'),nextBtn=document.getElementById('nextBtn'),errEl=document.getElementById('err');
+
+function buildScale(){const el=document.getElementById('scale');el.innerHTML='';
+ OPTS.forEach((t,i)=>{const v=i+1;const l=document.createElement('label');
+ l.innerHTML='<input type="radio" name="score" value="'+v+'">'+t;el.appendChild(l);});
+ el.querySelectorAll('input').forEach(r=>r.addEventListener('change',()=>nextBtn.disabled=!sel()));}
+function sel(){const c=document.querySelector('input[name=score]:checked');return c?c.value:'';}
+
+function computeGain(ab){
+  const ch=ab.getChannelData(0); let s=0,peak=0;
+  for(let i=0;i<ch.length;i++){ const x=ch[i]; s+=x*x; const a=Math.abs(x); if(a>peak)peak=a; }
+  const rms=Math.sqrt(s/ch.length)+1e-9; let g=TARGET_RMS/rms;
+  if(peak*g>PEAK) g=PEAK/(peak+1e-9);
+  return g;
+}
+async function loadAudio(url){
+  errEl.textContent='';
+  try{
+    const resp=await fetch(url); if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const buf=await resp.arrayBuffer();
+    player.src=URL.createObjectURL(new Blob([buf],{type:'audio/wav'}));
+    try{ const ab=await audioCtx.decodeAudioData(buf.slice(0)); gainNode.gain.value=computeGain(ab); }
+    catch(e){ gainNode.gain.value=1; }
+    player.play().catch(()=>{});
+    if(order[idx+1]) fetch(order[idx+1].url).catch(()=>{});   // warm next from cache
+  }catch(e){
+    errEl.textContent='Could not load this clip ('+e.message+'): '+url;
+  }
+}
+function loadClip(){
+  document.querySelectorAll('input[name=score]').forEach(r=>r.checked=false);
+  document.getElementById('counter').textContent='Clip '+(idx+1)+' of '+order.length;
+  document.getElementById('bar').style.width=((idx/order.length)*100)+'%';
+  nextBtn.disabled=true;
+  loadAudio(order[idx].url);
+}
+document.getElementById('startBtn').onclick=()=>{
+  pid=(document.getElementById('pid').value||'').trim();
+  if(!pid){alert('Please enter a participant ID.');return;}
+  if(!document.getElementById('consent').checked){alert('Please tick the consent & confidentiality box to continue.');return;}
+  consentVal='agreed';
+  audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  srcNode=audioCtx.createMediaElementSource(player);   // route player through gain (once)
+  gainNode=audioCtx.createGain();
+  srcNode.connect(gainNode).connect(audioCtx.destination);
+  document.getElementById('intro').classList.add('hidden');
+  document.getElementById('test').classList.remove('hidden');
+  buildScale(); loadClip();
+};
+document.getElementById('replayBtn').onclick=()=>{ player.currentTime=0; player.play().catch(()=>{}); };
+nextBtn.onclick=()=>{
+  results.push({participant:pid,presentation_order:idx+1,clip_id:order[idx].id,score:sel(),consent:consentVal});
+  player.pause(); idx++;
+  if(idx<order.length){ loadClip(); window.scrollTo({top:0,behavior:'smooth'}); }
+  else{ document.getElementById('bar').style.width='100%';
+        document.getElementById('test').classList.add('hidden');
+        document.getElementById('done').classList.remove('hidden'); }
+};
+document.getElementById('dlBtn').onclick=()=>{
+  const h=['participant','presentation_order','clip_id','score','consent'];
+  const rows=[h.join(',')].concat(results.map(r=>h.map(k=>r[k]).join(',')));
+  const b=new Blob([rows.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(b);
+  a.download='results_'+pid+'.csv'; a.click();
+  document.getElementById('dlNote').textContent='Saved results_'+pid+'.csv ('+results.length+' ratings). Please email it back.';
+};
+</script></body></html>
